@@ -64,6 +64,64 @@ PieChart(PREMISES_TYPE,
          hole = 0,
          main = NULL)
 
+# Getting the crime types by hour of day
+hour_crime_group <- crimes_data %>% 
+  count(REPORT_HOUR, MCI_CATEGORY) %>%
+  group_by(REPORT_HOUR, MCI_CATEGORY)
+head(hour_crime_group)
 
+# Plotting line graph for crime types by hour of day
+ggplot(hour_crime_group, aes(x = REPORT_HOUR, y = n, color = MCI_CATEGORY)) +
+  geom_line() +
+  labs(x = "Hour(24-hour clock)", 
+       y = "Number of occurences", 
+       title = "Crime Types by Hour of Day")
 
+# Getting the Neighbourhoods with the most crimes
+location_crimes_group <- crimes_data %>% 
+  count(NEIGHBOURHOOD_158) %>%
+  group_by(NEIGHBOURHOOD_158) %>%
+  arrange(desc(n))
+location_crimes_group
 
+location_crimes_group_top20 <- head(location_crimes_group, 20)
+location_crimes_group_top20
+
+# Plotting bar graph for Neighbourhoods with most crimes Top 20
+location_crimes_group_top20 %>%
+  ggplot(aes(x = NEIGHBOURHOOD_158, y = n)) +
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(x = "Neighbourhoods", 
+       y = "Number of occurences", 
+       title = "Top 20 Neighbourhoods with Most Crimes")
+
+# Getting the occurance of crimes per month
+mci_monthwise <- crimes_data %>% 
+  count(OCC_MONTH, MCI_CATEGORY) %>%
+  group_by(OCC_MONTH, MCI_CATEGORY) %>%
+  mutate(OCC_MONTH = factor(OCC_MONTH, levels = month.name)) %>%
+  arrange(OCC_MONTH)
+head(mci_monthwise)
+
+# Plotting a Heatmap for Major Crime indicator by Month
+ggplot(mci_monthwise, aes(x = OCC_MONTH, y = MCI_CATEGORY, fill = n)) +
+  geom_tile() +
+  scale_fill_gradientn(colors = hcl.colors(20, "RdYlGn")) +
+  guides(fill = guide_colourbar(barwidth = 0.5, barheight = 20)) +
+  geom_text(aes(label = n), color = "white", size = 4) +
+  labs(x = "Month of Occurance", 
+       y = "MCI Category",
+       title = "Major Crime Indicators by Month")
+
+# if(!('sf' %in% installed.packages())){
+#   install.packages('sf')
+# }
+# library(sf)
+# toronto_shape <- read_sf('data/Major_Crime_Indicators_Open_Data.shp')
+# 
+# if(!('broom' %in% installed.packages())){
+#   install.packages('broom')
+# }
+# library(broom)
+# spdf_fortified <- tidy(toronto_shape, region = "NEIGHBOURHOOD_158")
