@@ -1,3 +1,4 @@
+```{r}
 if(!('readr' %in% installed.packages())){
   install.packages('readr')
 }
@@ -10,7 +11,6 @@ print(head(crimes_data))
 names(crimes_data)
 
 
-# Initial Data Exploration ------------------------------------------------
 if(!('dplyr' %in% installed.packages())){
   install.packages('dplyr')
 }
@@ -124,3 +124,15 @@ ggplot(mci_monthwise, aes(x = OCC_MONTH, y = MCI_CATEGORY, fill = n)) +
        y = "MCI Category",
        title = "Major Crime Indicators by Month")
 
+# if(!('sf' %in% installed.packages())){
+#   install.packages('sf')
+# }
+# library(sf)
+# toronto_shape <- read_sf('data/Major_Crime_Indicators_Open_Data.shp')
+# 
+# if(!('broom' %in% installed.packages())){
+#   install.packages('broom')
+# }
+# library(broom)
+# spdf_fortified <- tidy(toronto_shape, region = "NEIGHBOURHOOD_158")
+```
