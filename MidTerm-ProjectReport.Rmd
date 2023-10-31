@@ -1,0 +1,336 @@
+---
+title: "Midterm-Report-MCI"
+author: "Chirag Bellara & Soumya Velamuri"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r}
+library(ggplot2)
+library(ggthemes)
+library(dplyr)
+library(viridis)
+library(tidyr)
+library(cluster)
+library(ggmap)
+library(maps)
+```
+
+#### Load the Dataset and Check for duplicated records
+
+```{r}
+toronto <- read.csv('data/Major_Crime_Indicators_Open_Data.csv')
+head(toronto)
+```
+
+```{r}
+sum(is.na(toronto))
+```
+
+```{r}
+sapply(toronto, function(x) sum(is.na(x)))
+```
+
+```{r}
+missingCols <- select(toronto, OCC_YEAR, OCC_MONTH, OCC_DAY, OCC_DOY, OCC_DOW)
+toronto <- na.omit(toronto)
+(colMeans(is.na(missingCols)))*100
+```
+
+```{r}
+sum(duplicated(toronto$EVENT_UNIQUE_ID))
+toronto <- subset(toronto, !duplicated(toronto$EVENT_UNIQUE_ID))
+unique(toronto$OCC_YEAR)
+unique(toronto$REPORT_YEAR)
+```
+
+```{r}
+year_group <- group_by(toronto, OCC_YEAR)
+crime_by_year <- summarise(year_group,
+                          n = n())
+crime_by_year
+```
+
+```{r}
+# Getting the Count of Each category of Crime
+table(unlist(toronto$MCI_CATEGORY))
+```
+
+```{r}
+drops <- c("X", "Y", "OBJECTID", "UCR_CODE", "UCR_EXT", "REPORT_DATE", "REPORT_MONTH", "REPORT_DAY", "REPORT_DOY", "REPORT_DOW", "REPORT_HOUR", "OCC_DOY", "REPORT_YEAR", "DIVISION", "HOOD_158", "HOOD_140")
+toronto <- toronto[, !(names(toronto) %in% drops)]
+```
+
+##### What are the total number of crimes in each year.
+
+```{r}
+cases_count <- toronto %>% 
+  filter(OCC_YEAR >= 2014) %>%
+  count(OCC_YEAR) %>%
+  group_by(OCC_YEAR)
+
+# Getting the Count of Number of Crimes each year
+ggplot(cases_count, aes(x = OCC_YEAR, y = n, label=n)) +
+  geom_line() +
+  geom_point() +
+  geom_text(hjust=0, vjust=0) +
+  labs(x = "Year", 
+       y = "Total Number of Criminal Cases throughout 2014 to 2022", 
+       title = "Yearwise total Criminal Cases throughout 2014 to 2022")
+```
+
+#### What are the Major Crimes in each year.
+
+```{r}
+# Grouping Major Crimes from 2014 to 2022
+indicator_group <- group_by(filter(toronto, OCC_YEAR >= 2014, OCC_YEAR != "NA"), MCI_CATEGORY, OCC_YEAR)
+crime_by_indicator <- summarise(indicator_group, n=n())
+crime_by_indicator <- crime_by_indicator[order(crime_by_indicator$n, decreasing = TRUE),]
+
+ggplot(aes(x = reorder(MCI_CATEGORY, n), y = n), data = crime_by_indicator) +
+  geom_bar(stat = 'identity', width = 0.5) +
+  geom_text(aes(label = n), stat = 'identity', data = crime_by_indicator, hjust = -0.1, size = 3.5) +
+  coord_flip() +
+  xlab('Major Crimes') +
+  ylab('Number of Occurrences') +
+  ggtitle('Major Crimes from 2014 to 2022') +
+  theme_bw() +
+  theme(plot.title = element_text(size = 16),
+        axis.title = element_text(size = 12, face = "bold")) +
+  facet_wrap(vars(OCC_YEAR))
+
+```
+
+#### What are the different types of Assault and which one is the worst.
+
+```{r}
+# Getting the crimes from Assault Category for 2014
+assault <- filter(toronto[toronto$MCI_CATEGORY == 'Assault', ], OCC_YEAR >= 2014, OCC_YEAR != "NA")
+assault_group <- group_by(assault, OFFENCE, OCC_YEAR)
+assault_by_offence <- summarise(assault_group, n=n())
+assault_by_offence <- assault_by_offence[order(assault_by_offence$n, decreasing = TRUE), ]
+ggplot(aes(x = reorder(OFFENCE, n), y = n), data = assault_by_offence) +
+  geom_bar(stat = 'identity', width = 0.6) +
+  geom_text(aes(label = n), stat = 'identity', data = assault_by_offence, hjust = -0.1, size = 3) +
+  coord_flip() +
+  xlab('Types of Assault') +
+  ylab('Number of Occurrences') +
+  ggtitle('Assault Crimes in 2014') +
+  theme_bw() +
+  theme(plot.title = element_text(size = 16),
+        axis.title = element_text(size = 12, face = "bold")) +
+  facet_wrap(vars(OCC_YEAR))
+```
+
+#### Let's look at the offences instead.
+
+```{r}
+# Getting the Offences from 2014 to 2022
+offence_group <- group_by(filter(toronto, OCC_YEAR >= 2014, OCC_YEAR != "NA"), OFFENCE, OCC_YEAR)
+crime_by_offence <- summarise(offence_group, n=n())
+crime_by_offence <- crime_by_offence[order(crime_by_offence$n, decreasing = TRUE), ]
+ggplot(aes(x = reorder(OFFENCE, n), y = n), data = crime_by_offence) +
+  geom_bar(stat = 'identity', width = 0.7) +
+  geom_text(aes(label = n), stat = 'identity', data = crime_by_offence, hjust = -0.1, size = 2) +
+  coord_flip() +
+  xlab('Types of Offence') +
+  ylab('Number of Occurrences') +
+  ggtitle('Offence Types Toronto from 2014 to 2022') +
+  theme_bw() +
+  theme(plot.title = element_text(size = 16),
+        axis.title = element_text(size = 12, face = "bold")) +
+  facet_wrap(vars(OCC_YEAR))
+```
+
+#### Checking for crimes wrt time of the day.
+
+```{r}
+# Crimes WRT Time of Day from 2014 to 2022
+hour_group <- group_by(filter(toronto, OCC_YEAR >= 2014, OCC_YEAR != "NA"), OCC_HOUR, OCC_YEAR)
+crime_hour <- summarise(hour_group, n=n())
+ggplot(aes(x=OCC_HOUR, y=n), data = crime_hour) + geom_line(size = 2.5, alpha = 0.7, color = "mediumseagreen", group=1) + 
+  geom_point(size = 0.5) + 
+  ggtitle('Total Crimes by Hour of Day in Toronto from 2014 to 2022') +
+  ylab('Number of Occurrences') +
+  xlab('Hour(24-hour clock)') +
+  theme_bw() +
+  theme(plot.title = element_text(size = 16),
+        axis.title = element_text(size = 12, face = "bold")) +
+  facet_wrap(vars(OCC_YEAR))
+```
+
+#### What types of Crimes are most frequent wrt the time of the day?
+
+```{r}
+# Crime Types WRT Hour of the day from 2014 to 2022
+hour_crime_group <- group_by(filter(toronto, OCC_YEAR >= 2014), OCC_HOUR, OCC_YEAR, MCI_CATEGORY)
+hour_crime <- summarise(hour_crime_group, n=n())
+ggplot(aes(x=OCC_HOUR, y=n, color=MCI_CATEGORY), data = hour_crime) + 
+  geom_line(size=1.5) + 
+  ggtitle('Crime Types by Hour of Day in Toronto from 2014 to 2022') +
+  ylab('Number of Occurrences') +
+  xlab('Hour(24-hour clock)') +
+  theme_bw() +
+  theme(plot.title = element_text(size = 16),
+        axis.title = element_text(size = 12, face = "bold")) +
+  facet_wrap(vars(OCC_YEAR))
+```
+
+#### **Where in Toronto were those crimes most likely to occur**
+
+```{r}
+# Crimes WRT location from 2014 to 2022
+location_group <- group_by(filter(toronto, OCC_YEAR >= 2014), NEIGHBOURHOOD_158)
+crime_by_location <- summarise(location_group, n=n())
+crime_by_location <- crime_by_location[order(crime_by_location$n, decreasing = TRUE), ]
+crime_by_location_top20 <- head(crime_by_location, 20)
+ggplot(aes(x = reorder(NEIGHBOURHOOD_158, n), y = n), data = crime_by_location_top20) +
+  geom_bar(stat = 'identity', width = 0.6) +
+  geom_text(aes(label = n), stat = 'identity', data = crime_by_location_top20, hjust = -0.1, size = 3) +
+  coord_flip() +
+  xlab('Neighbourhoods') +
+  ylab('Number of Occurrences') +
+  ggtitle('Neighbourhoods with Most Crimes - Top 20 from 2014 to 2022') +
+  theme_bw() +
+  theme(plot.title = element_text(size = 16),
+        axis.title = element_text(size = 12, face = "bold"))
+```
+
+#### Which are the Safest Neighborhoods to Live in 2022
+
+```{r}
+location_group <- group_by(filter(toronto, OCC_YEAR == 2022), NEIGHBOURHOOD_158)
+crime_by_location <- summarise(location_group, n=n())
+crime_by_location <- crime_by_location[order(crime_by_location$n, decreasing = TRUE), ]
+tail(crime_by_location, 5)
+```
+
+#### Comparing Neighborhoods with top offence types
+
+```{r}
+# Top Offences in Each Neighborhood from in 2022
+offence_location_group <- group_by(filter(toronto, OCC_YEAR == 2022), NEIGHBOURHOOD_158, OFFENCE, OCC_YEAR)
+offence_type_by_location <- summarise(offence_location_group, n=n())
+offence_type_by_location <- offence_type_by_location[order(offence_type_by_location$n, decreasing = TRUE), ]
+offence_type_by_location_top20 <- head(offence_type_by_location, 50)
+ggplot(aes(x = NEIGHBOURHOOD_158, y=n, fill = OFFENCE), data=offence_type_by_location_top20) +
+  geom_bar(stat = 'identity', position = position_dodge(), width = 0.8) +
+  xlab('Neighbourhood') +
+  ylab('Number of Occurrence') +
+  ggtitle('Offence Type vs. Neighbourhood Toronto in 2022') + 
+  theme_bw() +
+  theme(plot.title = element_text(size = 16),
+        axis.title = element_text(size = 12, face = "bold"),
+        axis.text.x = element_text(angle = 90, hjust = 1, vjust = .4)) +
+  facet_wrap(vars(OCC_YEAR))
+```
+
+#### Month Wise Crime Rates
+
+```{r}
+# Major Crimes for every month from 2014 to 2022
+crime_count <- filter(toronto, OCC_YEAR >= 2014) %>% 
+  group_by(OCC_MONTH, MCI_CATEGORY, OCC_YEAR) %>% 
+  summarise(Total = n())
+crime_count$OCC_MONTH <- ordered(crime_count$OCC_MONTH, levels = c('January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'))
+ggplot(crime_count, aes(OCC_MONTH, MCI_CATEGORY, fill = Total)) +
+  geom_tile(size = 1, color = "white") +
+  scale_fill_viridis()  +
+  geom_text(aes(label=Total), color='white') +
+  ggtitle("Major Crime Indicators by Month from 2014 to 2022") +
+  xlab('Month') +
+  theme(plot.title = element_text(size = 16), 
+        axis.title = element_text(size = 12, face = "bold")) +
+  facet_wrap(vars(OCC_YEAR))
+```
+
+#### Day of the Week Wise Crime Rates
+
+```{r}
+# Major Crimes for every DOW from 2014 to 2022
+day_count <- filter(toronto, OCC_YEAR >= 2014) %>% 
+  group_by(OCC_DOW, MCI_CATEGORY, OCC_YEAR) %>% 
+  summarise(Total = n())
+ggplot(day_count, aes(OCC_DOW, MCI_CATEGORY, fill = Total)) +
+  geom_tile(size = 1, color = "white") +
+  scale_fill_viridis()  +
+  geom_text(aes(label=Total), color='white') +
+  ggtitle("Major Crime Indicators by Day of Week from 2014 to 2022") +
+  xlab('Day of Week') +
+  theme(plot.title = element_text(size = 16), 
+        axis.title = element_text(size = 12, face = "bold")) +
+  facet_wrap(vars(OCC_YEAR))
+```
+
+### Homicide Rates
+
+```{r}
+homicide <- read.csv('data/Homicides.csv', stringsAsFactors = F)
+homicide <- filter(homicide, OCC_DATE >= 2014)
+homicide$OCC_DATE <- as.Date(homicide$OCC_DATE)
+year_group <- group_by(homicide, OCC_DATE, HOMICIDE_TYPE)
+homicide_by_year <- summarise(year_group, n=n())
+ggplot(aes(x = OCC_DATE, y=n, fill = HOMICIDE_TYPE), data = homicide_by_year) +
+  geom_bar(stat = 'identity', position = position_dodge(), width = 1) +
+  xlab('Year') +
+  ylab('Number of Homicides') +
+  ggtitle('Homicide 2014-2022') + 
+  ylim(0, 5) +
+  theme_bw() +
+  theme(plot.title = element_text(size = 16),
+        axis.title = element_text(size = 12, face = "bold"))
+```
+
+```{r}
+homicide$month <- format(as.Date(homicide$OCC_DATE) , "%B")
+homicide_count <- homicide %>% group_by(OCC_YEAR, month) %>% summarise(Total = n())
+homicide_count$month <- ordered(homicide_count$month, levels = c('January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'))
+ggplot(homicide_count, aes(OCC_YEAR, month, fill = Total)) +
+  geom_tile(size = 1, color = "white") +
+  scale_fill_viridis()  +
+  geom_text(aes(label=Total), color='white') +
+  ggtitle("Homicides in Toronto (2014-2022)") +
+  xlab('Year') +
+  theme(plot.title = element_text(size = 16), 
+        axis.title = element_text(size = 12, face = "bold"))
+
+```
+
+```{r}
+by_groups <- group_by(toronto, MCI_CATEGORY, NEIGHBOURHOOD_158)
+groups <- summarise(by_groups, n=n())
+groups <- groups[c("NEIGHBOURHOOD_158", "MCI_CATEGORY", "n")]
+groups_wide <- spread(groups, key = MCI_CATEGORY, value = n)
+groups_wide
+```
+
+```{r}
+z <- groups_wide[, -c(1,1)]
+z <- z[complete.cases(z), ]
+```
+
+```{r}
+m <- apply(z, 2, mean)
+s <- apply(z, 2, sd)
+z <- scale(z, m, s)
+```
+
+```{r}
+wss <- (nrow(z)-1) * sum(apply(z, 2, var))
+for (i in 2:20) wss[i] <- sum(kmeans(z, centers=i)$withiness)
+plot(1:20, wss, type='b', xlab='Number of Clusters', ylab='Within groups sum of squares')
+```
+
+```{r}
+kc <- kmeans(z, 2)
+kc
+```
+
+```{r}
+z1 <- data.frame(z, kc$cluster)
+clusplot(z1, kc$cluster, color=TRUE, shade=F, labels=0, lines=0, main='k-Means Cluster Analysis')
+```
