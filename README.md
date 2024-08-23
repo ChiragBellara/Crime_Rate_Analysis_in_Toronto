@@ -23,7 +23,27 @@ The primary dataset includes all Major Crime Indicators (MCI) occurrences by rep
 
 
 ## Research Questions
+- What are the trends in the overall incidence of Major Crime Indicators (MCI) occurrences over time?​
+- Are there any geographic clusters of MCI occurrences and related offenses within the dataset?​
+- Is there a seasonal or temporal pattern in the occurrence of specific MCIs, such as a higher incidence during certain months or days of the week?​
+- What is the distribution of MCI occurrences across different locations (e.g., residential areas, commercial areas, public spaces) and what factors may contribute to such patterns?​
+- Are there any associations or correlations between specific types of MCI occurrences, for example, do certain types of offenses tend to occur together or in a particular order?​
+- Is there any time gap between an incident occurring and it being reported?​
+- Where in Toronto were those crimes most likely to occur?​
+- What types of crimes are most frequent at each hour of the day?
 
+
+## Results
+### Data Preparation
+During the initial exploration of the data, we discovered significant duplication in the event_unique_id field, indicating that the same crime was reported multiple times.
+
+The occurrence year of incidents ranged from 2000 to 2022, but the report year for all crimes is between 2014 and 2022. This suggests that some incidents reported after 2014 actually occurred in prior years. For example, 24 incidents were reported to have occurred in 2000, and 17 in 2001. However, the vast majority of occurrences happened after 2014. To maintain the accuracy and relevance of the analysis, we focused exclusively on incidents from 2014 to 2022.
+<div align="center">
+    <img width="500" alt="image" src="https://github.com/user-attachments/assets/b7ecdd8c-15a7-4dd0-8b3d-4c0d177d8e57">
+    <img width="500" alt="image" src="https://github.com/user-attachments/assets/4d68107a-7b8e-4116-8411-4065dcf9e4c3">
+    <img width="500" alt="image" src="https://github.com/user-attachments/assets/255759ba-ec9d-480b-bf16-1d8debd7a5f6">
+    <img width="500" alt="image" src="https://github.com/user-attachments/assets/14ac0e16-534e-4f05-a17c-07d1f0a0f254">
+</div>
 
 #### To use the dataset,
 1. Download the zip file from the **data** folder.
